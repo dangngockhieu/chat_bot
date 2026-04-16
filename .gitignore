@@ -1,0 +1,15 @@
+# Python virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python rác (bytecode)
+__pycache__/
+*.py[cod]
+
+# Biến môi trường (Chứa API Key quan trọng)
+.env
+
+# Database cục bộ của AI (nếu bạn không muốn chia sẻ dữ liệu vector cũ)
+chromadb_storage/
