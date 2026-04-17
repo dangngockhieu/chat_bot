@@ -13,3 +13,5 @@ __pycache__/
 
 # Database cục bộ của AI (nếu bạn không muốn chia sẻ dữ liệu vector cũ)
 chromadb_storage/
+
+.vscode/
