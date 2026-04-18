@@ -15,3 +15,5 @@ __pycache__/
 chromadb_storage/
 
 .vscode/
+
+qdrant_data
