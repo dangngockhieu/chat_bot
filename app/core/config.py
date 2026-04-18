@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: str
-    OPENAI_API_KEY: str
+    GEMINI_API_KEY: str
 
     PAYOS_CLIENT_ID: str
     PAYOS_API_KEY: str

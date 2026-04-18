@@ -1,13 +1,14 @@
 import json
 
-from openai import OpenAI
+# Thay đổi import từ openai sang google.genai
+from google import genai
 
 from app.core.config import settings
 from app.dto.chat import ExtractedOrderResult
 from app.services.menu_service import get_available_items
 
-
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+# Khởi tạo client Gemini
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
 def build_menu_context() -> str:
@@ -80,16 +81,20 @@ TIN NHẮN KHÁCH:
 {user_text}
 """.strip()
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        temperature=0,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
+    # Gọi API Gemini thay vì OpenAI
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=user_prompt,
+        config={
+            "system_instruction": SYSTEM_PROMPT,
+            "temperature": 0,
+            # Bật chế độ ép trả về JSON chuẩn, tương đương JSON mode của OpenAI
+            "response_mime_type": "application/json",
+        }
     )
 
-    content = (response.choices[0].message.content or "").strip()
+    # Lấy nội dung text từ response của Gemini
+    content = (response.text or "").strip()
 
     try:
         data = json.loads(content)
