@@ -6,7 +6,7 @@ from app.dto.chat import TelegramMessageData
 
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}"
 
-
+# Gửi tin nhắn đến một chat_id cụ thể
 async def send_message(chat_id: str, text: str) -> dict:
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
@@ -19,7 +19,7 @@ async def send_message(chat_id: str, text: str) -> dict:
         response.raise_for_status()
         return response.json()
 
-
+# Gửi tin nhắn cho chủ quán
 async def send_message_to_owner(text: str) -> dict:
     if not settings.TELEGRAM_OWNER_CHAT_ID:
         raise ValueError("TELEGRAM_OWNER_CHAT_ID is not configured")
