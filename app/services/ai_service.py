@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional
 
 from langchain_community.document_loaders.csv_loader import CSVLoader
@@ -12,6 +13,9 @@ from app.dto.chat import ExtractedOrderResult
 
 class AIQuotaExceededError(Exception):
   """Raised when Gemini API returns RESOURCE_EXHAUSTED / quota errors."""
+
+
+logger = logging.getLogger(__name__)
 
 # --- CẤU HÌNH RAG VỚI QDRANT ---
 embeddings = GoogleGenerativeAIEmbeddings(
@@ -32,8 +36,18 @@ def initialize_vector_db():
     )
     return qdrant
 
-vector_db = initialize_vector_db()
-retriever = vector_db.as_retriever(search_kwargs={"k": 5})
+
+def initialize_retriever_safely():
+    try:
+        db = initialize_vector_db()
+        return db, db.as_retriever(search_kwargs={"k": 5})
+    except Exception as e:
+        # Do not crash app startup if Gemini embedding quota is exhausted.
+        logger.exception("Cannot initialize vector DB at startup: %s", e)
+        return None, None
+
+
+vector_db, retriever = initialize_retriever_safely()
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
@@ -139,9 +153,12 @@ chain = prompt_template | llm
 # --- LOGIC XỬ LÝ ---
 def extract_order_data(user_text: str) -> ExtractedOrderResult:
     try:
-        # Tìm 5 món liên quan nhất từ Qdrant
-        relevant_docs = retriever.invoke(user_text)
-        context = "\n".join([doc.page_content for doc in relevant_docs])
+        context = ""
+
+        # Tìm 5 món liên quan nhất từ Qdrant nếu retriever sẵn sàng.
+        if retriever is not None:
+            relevant_docs = retriever.invoke(user_text)
+            context = "\n".join([doc.page_content for doc in relevant_docs])
 
         # Gọi Gemini với Prompt chuẩn
         response = chain.invoke({
@@ -156,16 +173,15 @@ def extract_order_data(user_text: str) -> ExtractedOrderResult:
         return ExtractedOrderResult(**data)
 
     except Exception as e:
-      error_text = str(e)
-      print(f"Lỗi Extract Data: {error_text}")
+        error_text = str(e)
+        print(f"Lỗi Extract Data: {error_text}")
 
-      if "RESOURCE_EXHAUSTED" in error_text or "429" in error_text:
-        raise AIQuotaExceededError(error_text) from e
+        if "RESOURCE_EXHAUSTED" in error_text or "429" in error_text:
+            raise AIQuotaExceededError(error_text) from e
 
-      return ExtractedOrderResult(intent="unknown")
+        return ExtractedOrderResult(intent="unknown")
 
 def reload_menu():
-    global vector_db, retriever
-    vector_db = initialize_vector_db()
-    retriever = vector_db.as_retriever(search_kwargs={"k": 5})
-    return True
+  global vector_db, retriever
+  vector_db, retriever = initialize_retriever_safely()
+  return retriever is not None
